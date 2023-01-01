@@ -1,0 +1,22 @@
+{
+  "name": "11xm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "js/jquery.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "element-ui": "^2.13.2",
+    "express": "^4.17.1",
+    "formidable": "^1.2.2",
+    "mongoose": "^5.10.9",
+    "mysql": "^2.18.1",
+    "vue": "^2.6.12"
+  }
+}
