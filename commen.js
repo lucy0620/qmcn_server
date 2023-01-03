@@ -60,7 +60,7 @@ module.exports.isExsist = (mes, resp, arr, callBack) => {
   } else {
     resp.json({
       code: 404,
-      errMsg: '参数错误'
+      errMsg: '参数离家出走了'
     })
   }
 }

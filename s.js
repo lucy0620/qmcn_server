@@ -58,22 +58,9 @@ app.get('/refresh_get_UserInfo', async function (mes, resp, next) {
 })
 
 /************************* 书籍 Begin *************************/
-app.get('/getBooks_new', async function (mes, resp, next) {
-  console.log('path:', mes.path)
-  Book.getBooks_new(mes, resp, next)
-})
 app.get('/getBooks', async function (mes, resp, next) {
-  console.log('path:', mes.path)
-  Book.getBooks(mes, resp, next)
-})
-app.get('/getBooks', async function (mes, resp, next) {
-  console.log('path:', mes.path)
-  console.log('query:', mes.query)
-  Book.getBooks(mes, resp, next)
-})
-app.get('/getBooks_filter', async function (mes, resp, next) {
   nnArr = [mes.query.page, mes.query.count]
-  commen.isExsist(mes, resp, nnArr, () => { Book.getBooks_filter(mes, resp, next) })
+  commen.isExsist(mes, resp, nnArr, () => { Book.getBooks(mes, resp, next) })
 })
 app.get('/getBook_detail', async function (mes, resp, next) {
   nnArr = [mes.query.id]
@@ -87,6 +74,11 @@ app.get('/editBook', async function (mes, resp, next) {
   nnArr = [mes.query.name, mes.query.author, mes.query.type_id, mes.query.id]
   commen.isExsist(mes, resp, nnArr, () => { Book.editBook(mes, resp, next) })
 })
+app.get('/del_book', async function (mes, resp, next) {
+  nnArr = [mes.query.id]
+  commen.isExsist(mes, resp, nnArr, () => { Book.del_book(mes, resp, next) })
+})
+
 /************************* 书籍其他属性 Begin *************************/
 app.get('/getBook_type', async function (mes, resp, next) {
   console.log('path:', mes.path)
@@ -121,10 +113,6 @@ app.get('/getUser_bookshelfs', function (mes, resp, next) {
   nnArr = [mes.query.user_id]
   commen.isExsist(mes, resp, nnArr, () => { Bookshelf.getUser_bookshelfs(mes, resp, next) })
 })
-app.get('/getUser_bookshelfs_index', function (mes, resp, next) {
-  nnArr = [mes.query.user_id]
-  commen.isExsist(mes, resp, nnArr, () => { Bookshelf.getUser_bookshelfs_index(mes, resp, next) })
-})
 app.get('/bookshelfs_addBook', function (mes, resp, next) {
   nnArr = [mes.query.user_id, mes.query.book_id, mes.query.read_time, mes.query.id,]
   commen.isExsist(mes, resp, nnArr, () => { Bookshelf.bookshelfs_addBook(mes, resp, next) })
@@ -136,6 +124,10 @@ app.get('/add_bookshelf', function (mes, resp, next) {
 app.get('/getUser_bookshelf_detail', async function (mes, resp, next) {
   nnArr = [mes.query.user_id, mes.query.id,]
   commen.isExsist(mes, resp, nnArr, () => { Bookshelf.getUser_bookshelf_detail(mes, resp, next) })
+})
+app.get('/getUser_bookshelf_timeline', async function (mes, resp, next) {
+  nnArr = [mes.query.id,]
+  commen.isExsist(mes, resp, nnArr, () => { Bookshelf.getUser_bookshelf_timeline(mes, resp, next) })
 })
 app.get('/bookshelf_delBook', async function (mes, resp, next) {
   nnArr = [mes.query.user_id, mes.query.record_id,]
@@ -171,6 +163,14 @@ app.get('/getBook_Sentences', async function (mes, resp, next) {
   console.log('query:', mes.query)
   Sentence.getBook_Sentences(mes, resp, next)
 })
+app.get('/getUser_Sentences_timeline', async function (mes, resp, next) {
+  nnArr = [mes.query.user_id]
+  commen.isExsist(mes, resp, nnArr, () => { Sentence.getUser_Sentences_timeline(mes, resp, next) })
+})
+app.get('/del_sentence', async function (mes, resp, next) {
+  nnArr = [mes.query.id]
+  commen.isExsist(mes, resp, nnArr, () => { Sentence.del_sentence(mes, resp, next) })
+})
 
 /************************* 推文 Begin *************************/
 app.get('/book_add_recommend', async function (mes, resp, next) {
@@ -182,6 +182,11 @@ app.get('/getBook_Recommends', async function (mes, resp, next) {
   console.log('query:', mes.query)
   Recommend.getBook_Recommends(mes, resp, next)
 })
+app.get('/del_recommend', async function (mes, resp, next) {
+  nnArr = [mes.query.id]
+  commen.isExsist(mes, resp, nnArr, () => { Recommend.del_recommend(mes, resp, next) })
+})
+
 /************************* 反馈 Begin *************************/
 app.get('/add_suggestion', async function (mes, resp, next) {
   nnArr = [mes.query.content, mes.query.user_id]
@@ -255,64 +260,23 @@ let User = {
   }
 }
 let Book = {
-  // ------------------最新入库书籍列表------------------
-  getBooks_new: async (mes, resp, next) => {
+  // ------------------书籍搜索------------------
+  getBooks: async (mes, resp, next) => {
     /*
       返回所有列： 表名.* 
       返回固定列： 表名.字段名 
       重命名： 旧名 as 新名
       排序： order by 字段名 desc
       查找固定数量： limit 个数
+      模糊查询： like %字符%
+      查找第几条到第几条： limit 开始下标,个数
       联表查询： 表a left join 表b on 表a.字段名 = 表b.字段名
       带逗号的关联查询：group_concat，find_in_set，详见ipad笔记
     */
-    let sql = `select b.*, 
-    group_concat(distinct b_l.label_name) as label_names, 
-    b_t.type_name from qmcn.book b 
-    left join qmcn.book_type b_t on b.type_id = b_t.type_id 
-    left join qmcn.book_label b_l on find_in_set(b_l.label_id, b.label_ids) 
-    group by b.id 
-    order by create_time desc limit 5;`
-    let params = []
-    let result = await db.query(sql, params);
-    let res = []
-    if (result.length > 0) {
-      res = result
-    }
-    resp.json({
-      data: res,
-      code: 200
-    })
-  },
-  // ------------------书籍简单列表------------------
-  getBooks: async (mes, resp, next) => {
-    /*
-      模糊查询： like %字符%
-      查找第几条到第几条： limit 开始下标,个数
-    */
-    let limit = [(mes.query.page - 1) * mes.query.count, mes.query.count]
-    let name = mes.query.keyword
-    let sql = `select * from book limit ${limit[0]},${limit[1]}`;
-    if (name) {
-      sql = `select * from book 
-      WHERE name LIKE '%${name}%' or author LIKE '%${name}%' or cvName LIKE '%${name}%' 
-      limit ${limit[0]},${limit[1]};`;
-    }
-    let result = await db.query(sql, []);
-    let res = []
-    if (result.length > 0) {
-      res = result
-    }
-    resp.json({
-      data: res,
-      code: 200
-    })
-  },
-  // ------------------书籍搜索------------------
-  getBooks_filter: async (mes, resp, next) => {
     /*
       sort 默认时间 1热度 2收藏
     */
+    let keyword = commen.isExsistfilterEmoji(mes.query.keyword)
     let limit = [(mes.query.page - 1) * mes.query.count, mes.query.count]
     let type_id = mes.query.type_id == -1 ? '' : mes.query.type_id
     let website_id = mes.query.website_id == -1 ? '' : mes.query.website_id
@@ -337,6 +301,9 @@ let Book = {
       for (let i = 0; i < label_idsArr.length; i++) {
         sql += `and find_in_set(${label_idsArr[i]}, label_ids) `
       }
+    }
+    if (keyword) {
+      sql += `and name LIKE '%${keyword}%' or author LIKE '%${keyword}%' or cvName LIKE '%${keyword}%' `
     }
     sql += `
     order by ${mes.query.sort == 1 ? 'likes desc,create_time desc' : mes.query.sort == 2 ? 'collect desc, create_time desc' : 'create_time desc'} 
@@ -468,6 +435,32 @@ let Book = {
       code
     })
   },
+  // ------------------删除书籍------------------
+  del_book: async (mes, resp, next) => {
+    let sql = `DELETE FROM book
+      where id = ?;`;
+    let params = [mes.query.id]
+    let result = await db.query(sql, params);
+    let code = ''
+    if (result.fieldCount == 0) {
+      code = 200
+    }
+    resp.json({
+      code
+    })
+    // 删除包含此书的 中间记录表中的书单
+    let sql2 = `DELETE FROM user_bookshelf_mid
+    where book_id = ?;`;
+    db.query(sql2, params);
+    // 删除此书的 相关句子
+    let sql3 = `DELETE FROM sentence
+    where book_id = ?;`;
+    db.query(sql2, params);
+    // 删除此书的 相关推文
+    let sql4 = `DELETE FROM recommend
+    where book_id = ?;`;
+    db.query(sql2, params);
+  },
 }
 let BookProp = {
   // ------------------获取书籍类型------------------
@@ -569,35 +562,28 @@ let Bookshelf = {
       group_concat函数合并拼接
       GROUP_CONCAT(DISTINCT 要拼接的字段 ORDER BY 排序字段 ASC/DESC SEPARATOR '分隔符')
     */
-    let sql = `select a.name,a.id,count(b.bookshelf_id) as count,
-    group_concat(b.book_id SEPARATOR ',' ) as book_ids 
-    from user_bookshelf a
+    let sql = `select a.name,a.id,count(b.bookshelf_id) as count
+    from user_bookshelf a 
     left join user_bookshelf_mid b on a.id = b.bookshelf_id
     where a.user_id = ? group by a.id order by a.id;`;
     let params = [mes.query.user_id]
     let result = await db.query(sql, params);
     let res = []
     if (result.length > 0) {
-      res = result
-    }
-    resp.json({
-      data: res,
-      code: 200
-    })
-  },
-  // ------------------获取用户书单-首页------------------
-  getUser_bookshelfs_index: async (mes, resp, next) => {
-    let sql = `select a.name,a.id,b.read_time,b.book_id,b.add_time,book.name book_name,book_type.type_name,book.images 
-    from user_bookshelf a
-    left join user_bookshelf_mid b on a.id = b.bookshelf_id
-    left join book on book.id = b.book_id
-    left join book_type on book_type.type_id = book.type_id
-    where a.user_id = ? order by add_time desc;`;
-    let params = [mes.query.user_id]
-    let result = await db.query(sql, params);
-    let res = []
-    if (result.length > 0) {
-      res = result
+      res = JSON.parse(JSON.stringify(result))
+      for (let i = 0; i < res.length; i++) {
+        let sql = `select read_time,
+        b.book_id,b.add_time,book.name book_name,book_type.type_name,book.images 
+        from user_bookshelf a
+        left join user_bookshelf_mid b on a.id = b.bookshelf_id
+        left join book on book.id = b.book_id
+        left join book_type on book_type.type_id = book.type_id
+        where a.user_id = ${mes.query.user_id} and ${res[i].id} = b.bookshelf_id
+        order by read_time desc, add_time desc;
+         `;
+        let _result = await db.query(sql, []);
+        res[i].child = _result
+      }
     }
     resp.json({
       data: res,
@@ -610,7 +596,6 @@ let Bookshelf = {
     let params = [mes.query.user_id, mes.query.book_id, mes.query.read_time, mes.query.id,]
     let result = await db.query(sql, params);
     let code = ''
-    console.log(result)
     if (result.fieldCount == 0) {
       code = 200
     }
@@ -627,7 +612,6 @@ let Bookshelf = {
     let params = [mes.query.user_id, commen.isExsistfilterEmoji(mes.query.name)]
     let result = await db.query(sql, params);
     let code = ''
-    console.log(result)
     if (result.fieldCount == 0) {
       code = 200
     }
@@ -641,12 +625,47 @@ let Bookshelf = {
     from user_bookshelf_mid a
     left join book on book.id = a.book_id
     left join book_type on book_type.type_id = book.type_id
-    where a.user_id = ? and a.bookshelf_id = ? order by ${mes.query.sort ? 'a.read_time' : 'a.add_time'} desc;`;
+    where a.user_id = ? and a.bookshelf_id = ? order by a.read_time desc, a.add_time desc;`;
     let params = [mes.query.user_id, mes.query.id]
     let result = await db.query(sql, params);
     let res = []
     if (result.length > 0) {
       res = result
+    }
+    resp.json({
+      data: res,
+      code: 200
+    })
+  },
+  // ------------------获取用户某书单的时间线------------------
+  /*
+    where xx group 先查再对结果分组
+    having xx group 先分组再筛选
+  */
+  getUser_bookshelf_timeline: async (mes, resp, next) => {
+    let sql = `
+      select count(book_id) as count,bookshelf_id,
+      DATE_FORMAT(read_time, '%y%m') y_month,
+      DATE_FORMAT(read_time, '%Y') year,
+      DATE_FORMAT(read_time, '%m') month from user_bookshelf_mid where bookshelf_id = ${mes.query.id}
+      group by y_month  order by read_time desc,add_time desc`;
+    let result = await db.query(sql, []);
+    let res = []
+    if (result.length > 0) {
+      res = JSON.parse(JSON.stringify(result))
+      for (let i = 0; i < res.length; i++) {
+        let sql = `
+        select a.*,book.*,book_type.type_name,a.id record_id ,
+        DATE_FORMAT(read_time, '%D') day
+        from user_bookshelf_mid a
+        left join book on book.id = a.book_id
+        left join book_type on book_type.type_id = book.type_id
+           having bookshelf_id = ${mes.query.id} and DATE_FORMAT(read_time, '%y%m') = ${res[i].y_month}
+           order by read_time desc,add_time desc
+           `;
+        let result = await db.query(sql, []);
+        res[i].child = result
+      }
     }
     resp.json({
       data: res,
@@ -745,7 +764,7 @@ let Sentence = {
     let params = [mes.query.id, mes.query.label_ids, commen.isExsistfilterEmoji(mes.query.content), mes.query.user_id, 0]
     let sql = `insert into sentence 
     (book_id,sentence_label_ids,content,user_id,likes)
-    values (?,?,?,?,?);`;
+      values (?,?,?,?,?);`;
     let result = await db.query(sql, params);
     let code = ''
     if (result.fieldCount == 0) {
@@ -759,22 +778,25 @@ let Sentence = {
   getBook_Sentences: async (mes, resp, next) => {
     /*
       返回结果默认按照：添加时间排序
-      可选  id       书籍id   int
+      可选  id       书籍id   int 
       可选  random   随机条数  NUMBER
-      可选  user_id  用户id - todo
+      可选  user_id  用户id   和书籍id只能传一个
     */
+
     let sql = `
-    select * from 
-    (
       select s.*,book.name book_name,group_concat(distinct l.label_name) as label_names
       from sentence s
       left join book on s.book_id = book.id
       left join sentence_label l on find_in_set(l.label_id , s.sentence_label_ids) group by s.sentence_id
+      ${mes.query.id ? `having book_id = ${mes.query.id}` : ``} 
+      ${mes.query.user_id ? `having user_id = ${mes.query.user_id}` : ''} 
       ${mes.query.random ? 'ORDER BY RAND() LIMIT ' + mes.query.random : 'order by creat_time desc'}
-    ) 
-    as new_t ${mes.query.id ? 'where new_t.book_id = ?' : ''} 
-    ;`;
-    let result = await db.query(sql, [mes.query.id]);
+      `;
+    if (mes.query.page) {
+      let limit = [(mes.query.page - 1) * mes.query.count, mes.query.count]
+      sql += ` limit ${limit[0]},  ${limit[1]}`
+    }
+    let result = await db.query(sql, []);
     let res = []
     if (result.length > 0) {
       res = result
@@ -782,6 +804,55 @@ let Sentence = {
     resp.json({
       data: res,
       code: 200
+    })
+  },
+  // ------------------获取用户所有句子的时间线------------------
+  /*
+    DATE_FORMAT(NOW(), '%Y')
+  */
+  getUser_Sentences_timeline: async (mes, resp, next) => {
+    let sql = `
+    select count(sentence_id) as count,
+    DATE_FORMAT(creat_time, '%y%m') y_month,
+    DATE_FORMAT(creat_time, '%Y') year,
+    DATE_FORMAT(creat_time, '%m') month,user_id from sentence 
+    group by DATE_FORMAT(creat_time, '%y%m') having user_id = ${mes.query.user_id} order by creat_time desc`;
+    let result = await db.query(sql, []);
+    let res = []
+    if (result.length > 0) {
+      res = JSON.parse(JSON.stringify(result))
+      for (let i = 0; i < res.length; i++) {
+        let sql = `
+         select s.*,book.name book_name,group_concat(distinct l.label_name) as label_names,
+         DATE_FORMAT(creat_time, '%l%p') hour,DATE_FORMAT(creat_time, '%d') day
+         from sentence s
+         left join book on s.book_id = book.id
+         left join sentence_label l on find_in_set(l.label_id , s.sentence_label_ids) group by s.sentence_id
+         having user_id = ${mes.query.user_id} and DATE_FORMAT(creat_time, '%y%m') = ${res[i].y_month}
+         order by creat_time desc
+         `;
+
+        let result = await db.query(sql, []);
+        res[i].child = result
+      }
+    }
+    resp.json({
+      data: res,
+      code: 200
+    })
+  },
+  // ------------------删除句子------------------
+  del_sentence: async (mes, resp, next) => {
+    let sql = `DELETE FROM sentence
+      where sentence_id = ?;`;
+    let params = [mes.query.id]
+    let result = await db.query(sql, params);
+    let code = ''
+    if (result.fieldCount == 0) {
+      code = 200
+    }
+    resp.json({
+      code
     })
   },
 }
@@ -806,11 +877,17 @@ let Recommend = {
     let sql = `
     select recommend.*,book.name book_name,user.nickName 
     from recommend
-    left join book on recommend.book_id = book.id
+    left join book on recommend.book_id = book.id 
     left join user on recommend.user_id = user.id 
-      ${mes.query.id ? 'where book_id = ?' : ''} 
-      ${mes.query.random ? 'ORDER BY RAND() LIMIT ' + mes.query.random : 'order by likes desc,recommend.creat_time desc'};`;
-    let result = await db.query(sql, [mes.query.id]);
+    ${mes.query.id ? 'having book_id = ' + mes.query.id : ''} 
+    ${mes.query.user_id ? `having user_id = ${mes.query.user_id} ` : ''} 
+    ${mes.query.random ? 'ORDER BY RAND() LIMIT ' + mes.query.random : ' order by recommend.creat_time desc'} 
+    `;
+    if (mes.query.page) {
+      let limit = [(mes.query.page - 1) * mes.query.count, mes.query.count]
+      sql += ` limit ${limit[0]},  ${limit[1]}`
+    }
+    let result = await db.query(sql, []);
     let res = []
     if (result.length > 0) {
       res = result
@@ -818,6 +895,20 @@ let Recommend = {
     resp.json({
       data: res,
       code: 200
+    })
+  },
+  // ------------------删除推文------------------
+  del_recommend: async (mes, resp, next) => {
+    let sql = `DELETE FROM recommend
+      where recommend_id = ?;`;
+    let params = [mes.query.id]
+    let result = await db.query(sql, params);
+    let code = ''
+    if (result.fieldCount == 0) {
+      code = 200
+    }
+    resp.json({
+      code
     })
   },
 }

@@ -49,6 +49,7 @@ module.exports.query = (sql, params, callback) => {
           conn.query(sql, params, (error, rows) => {
             conn.release();
             if (error) {
+              console.log(sql)
               reject(error);
             } else {
               resolve(rows);
