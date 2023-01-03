@@ -179,6 +179,7 @@ app.get('/book_add_recommend', async function (mes, resp, next) {
 app.get('/getBook_Recommends', async function (mes, resp, next) {
   console.log('path:', mes.path)
   console.log('query:', mes.query)
+
   Recommend.getBook_Recommends(mes, resp, next)
 })
 app.get('/del_recommend', async function (mes, resp, next) {
@@ -786,15 +787,13 @@ let Sentence = {
       可选  random   随机条数  NUMBER
       可选  user_id  用户id   和书籍id只能传一个
     */
-    let user_id = mes.query.user_id
-    user_id = user_id && user_id != 'undefined' ? user_id : ''
     let sql = `
       select s.*,book.name book_name,group_concat(distinct l.label_name) as label_names
       from sentence s
       left join book on s.book_id = book.id
       left join sentence_label l on find_in_set(l.label_id , s.sentence_label_ids) group by s.sentence_id
-      ${mes.query.id ? `having book_id = ${mes.query.id}` : ``} 
-      ${mes.query.user_id ? `having user_id = ${mes.query.user_id}` : ''} 
+      ${mes.query.id && mes.query.id != 'undefined' ? `having book_id = ${mes.query.id}` : ``} 
+      ${mes.query.user_id && mes.query.user_id != 'undefined' ? `having user_id = ${mes.query.user_id}` : ''} 
       ${mes.query.random ? 'ORDER BY RAND() LIMIT ' + mes.query.random : 'order by creat_time desc'}
       `;
     if (mes.query.page) {
@@ -884,8 +883,8 @@ let Recommend = {
     from recommend
     left join book on recommend.book_id = book.id 
     left join user on recommend.user_id = user.id 
-    ${mes.query.id ? 'having book_id = ' + mes.query.id : ''} 
-    ${mes.query.user_id ? `having user_id = ${mes.query.user_id} ` : ''} 
+    ${mes.query.id && mes.query.id != 'undefined' ? 'having book_id = ' + mes.query.id : ''} 
+    ${mes.query.user_id && mes.query.user_id != 'undefined'? `having user_id = ${mes.query.user_id} ` : ''} 
     ${mes.query.random ? 'ORDER BY RAND() LIMIT ' + mes.query.random : ' order by recommend.creat_time desc'} 
     `;
     if (mes.query.page) {
