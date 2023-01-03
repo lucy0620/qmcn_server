@@ -56,7 +56,6 @@ app.get('/refresh_get_UserInfo', async function (mes, resp, next) {
   nnArr = [mes.query.id]
   commen.isExsist(mes, resp, nnArr, () => { User.refresh_get_UserInfo(mes, resp, next) })
 })
-
 /************************* 书籍 Begin *************************/
 app.get('/getBooks', async function (mes, resp, next) {
   nnArr = [mes.query.page, mes.query.count]
@@ -274,7 +273,9 @@ let Book = {
       带逗号的关联查询：group_concat，find_in_set，详见ipad笔记
     */
     /*
-      sort 默认时间 1热度 2收藏
+      page 必填
+      count 必填
+      sort 默认时间 1热度 2收藏 -1随机
     */
     let keyword = commen.isExsistfilterEmoji(mes.query.keyword)
     let limit = [(mes.query.page - 1) * mes.query.count, mes.query.count]
@@ -306,7 +307,10 @@ let Book = {
       sql += `and name LIKE '%${keyword}%' or author LIKE '%${keyword}%' or cvName LIKE '%${keyword}%' `
     }
     sql += `
-    order by ${mes.query.sort == 1 ? 'likes desc,create_time desc' : mes.query.sort == 2 ? 'collect desc, create_time desc' : 'create_time desc'} 
+    order by ${mes.query.sort == 1 ? 'likes desc,create_time desc'
+        : mes.query.sort == 2 ? 'collect desc, create_time desc'
+          : mes.query.sort == -1 ? 'RAND()'
+            : 'create_time desc'} 
     limit ${limit[0]},${limit[1]};`;
     let result = await db.query(sql, []);
     let res = []
@@ -782,7 +786,8 @@ let Sentence = {
       可选  random   随机条数  NUMBER
       可选  user_id  用户id   和书籍id只能传一个
     */
-
+    let user_id = mes.query.user_id
+    user_id = user_id && user_id != 'undefined' ? user_id : ''
     let sql = `
       select s.*,book.name book_name,group_concat(distinct l.label_name) as label_names
       from sentence s
