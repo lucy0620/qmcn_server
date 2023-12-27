@@ -179,7 +179,6 @@ app.get('/book_add_recommend', async function (mes, resp, next) {
 app.get('/getBook_Recommends', async function (mes, resp, next) {
   console.log('path:', mes.path)
   console.log('query:', mes.query)
-
   Recommend.getBook_Recommends(mes, resp, next)
 })
 app.get('/del_recommend', async function (mes, resp, next) {
@@ -195,6 +194,35 @@ app.get('/add_suggestion', async function (mes, resp, next) {
 app.get('/get_suggestion', async function (mes, resp, next) {
   console.log('path:', mes.path)
   Suggestion.get_suggestion(mes, resp, next)
+})
+/************************* 捏脸 Begin *************************/
+app.get('/get_nshFace', async function (mes, resp, next) {
+  nnArr = [mes.query.page, mes.query.count]
+  commen.isExsist(mes, resp, nnArr, () => { nshFace.get_nshFace(mes, resp, next) })
+})
+app.get('/add_nshFace', async function (mes, resp, next) {
+  nnArr = [mes.query.name,mes.query.type_id,mes.query.user_id,mes.query.data]
+  commen.isExsist(mes, resp, nnArr, () => { nshFace.add_nshFace(mes, resp, next) })
+})
+app.get('/edit_nshFace', async function (mes, resp, next) {
+  nnArr = [mes.query.name,mes.query.type_id,mes.query.data,mes.query.id]
+  commen.isExsist(mes, resp, nnArr, () => { nshFace.edit_nshFace(mes, resp, next) })
+})
+app.get('/del_nshFace', async function (mes, resp, next) {
+  nnArr = [mes.query.id]
+  commen.isExsist(mes, resp, nnArr, () => { nshFace.del_nshFace(mes, resp, next) })
+})
+app.get('/get_nshFace_type', async function (mes, resp, next) {
+  console.log('path:', mes.path)
+  nshFace.get_nshFace_type(mes, resp, next)
+})
+app.get('/add_nshFace_like', async function (mes, resp, next) {
+  nnArr = [mes.query.id]
+  commen.isExsist(mes, resp, nnArr, () => { nshFace.add_nshFace_like(mes, resp, next) })
+})
+app.get('/get_nshFace_detail', async function (mes, resp, next) {
+  nnArr = [mes.query.id]
+  commen.isExsist(mes, resp, nnArr, () => { nshFace.get_nshFace_detail(mes, resp, next) })
 })
 let User = {
   // ------------------登录/注册------------------
@@ -460,11 +488,11 @@ let Book = {
     // 删除此书的 相关句子
     let sql3 = `DELETE FROM sentence
     where book_id = ?;`;
-    db.query(sql2, params);
+    db.query(sql3, params);
     // 删除此书的 相关推文
     let sql4 = `DELETE FROM recommend
     where book_id = ?;`;
-    db.query(sql2, params);
+    db.query(sql4, params);
   },
 }
 let BookProp = {
@@ -942,6 +970,157 @@ let Suggestion = {
     }
     resp.json({
       data: res,
+      code: 200
+    })
+  },
+}
+let nshFace = {
+  // ------------------获取书籍类型------------------
+  get_nshFace_type: async (mes, resp, next) => {
+    let sql = `select * from nsh_face_type`;
+    let result = await db.query(sql, []);
+    let res = []
+    if (result.length > 0) {
+      res = result
+    }
+    resp.json({
+      data: res,
+      code: 200
+    })
+  },
+  // ------------------捏脸搜索------------------
+  get_nshFace: async (mes, resp, next) => {
+    /*
+      返回所有列： 表名.* 
+      返回固定列： 表名.字段名 
+      重命名： 旧名 as 新名
+      排序： order by 字段名 desc
+      查找固定数量： limit 个数
+      模糊查询： like %字符%
+      查找第几条到第几条： limit 开始下标,个数
+      联表查询： 表a left join 表b on 表a.字段名 = 表b.字段名
+      带逗号的关联查询：group_concat，find_in_set，详见ipad笔记
+    */
+    /*
+      page 必填
+      count 必填
+      sort 默认时间 1热度 2收藏 -1随机
+    */
+    let limit = [(mes.query.page - 1) * mes.query.count, mes.query.count]
+    let type_id = mes.query.type_id == -1 ? '' : mes.query.type_id
+    let sql = `
+      select f.*, 
+      f_t.type_name 
+      from qmcn.nsh_face f
+      left join qmcn.nsh_face_type f_t on f.type_id = f_t.type_id 
+      having id > 0 `;
+    if (type_id) {
+      sql += ` and type_id = '${type_id}'`;
+    }
+    sql += `
+    order by ${mes.query.sort == 1 ? 'likes desc,create_time desc'
+        : mes.query.sort == 2 ? 'collect desc, create_time desc'
+          : mes.query.sort == -1 ? 'RAND()'
+            : 'create_time desc'} 
+    limit ${limit[0]},${limit[1]};`;
+    let result = await db.query(sql, []);
+    let res = []
+    if (result.length > 0) {
+      res = result
+    }
+    resp.json({
+      data: res,
+      code: 200
+    })
+  },
+  // ------------------捏脸添加------------------
+  add_nshFace: async (mes, resp, next) => {
+    /* 
+     防止前端不传的时候存了undefined,别的参数不判断是因为前端不会传undefined
+     除非直接请求接口，需要进行数据库操作报错时的处理 todo
+    */
+    let params = [
+      commen.isExsistfilterEmoji(mes.query.name),
+      mes.query.type_id,
+      mes.query.images,
+      commen.isExsistfilterEmoji(mes.query.data),
+      mes.query.user_id]
+    let sql = `insert into nsh_face 
+      (name,type_id,images,data,user_id)
+      values (?,?,?,?,?);`;
+    let result = await db.query(sql, params);
+    let code = ''
+    if (result.fieldCount == 0) {
+      code = 200
+    }
+    resp.json({
+      code
+    })
+  },
+  // ------------------捏脸编辑------------------
+  edit_nshFace: async (mes, resp, next) => {
+    let params = [
+      commen.isExsistfilterEmoji(mes.query.name),
+      mes.query.type_id,
+      mes.query.images,
+      commen.isExsistfilterEmoji(mes.query.data),
+      mes.query.id]
+    let sql = `UPDATE nsh_face set 
+    name=?,type_id=?,images=?,data=?
+    where id=?;`;
+    let result = await db.query(sql, params);
+    let code = ''
+    if (result.fieldCount == 0) {
+      code = 200
+    }
+    resp.json({
+      code
+    })
+  },
+  // ------------------删除捏脸------------------
+  del_nshFace: async (mes, resp, next) => {
+    let sql = `DELETE FROM nsh_face
+      where id = ?;`;
+    let params = [mes.query.id]
+    let result = await db.query(sql, params);
+    let code = ''
+    if (result.fieldCount == 0) {
+      code = 200
+    }
+    resp.json({
+      code
+    })
+    // 删除包含此脸型的 收藏记录
+    let sql2 = `DELETE FROM nsh_face_collection
+    where face_id = ?;`;
+    db.query(sql2, params);
+  },
+  // ------------------增加捏脸热度------------------
+  add_nshFace_like: async (mes, resp, next) => {
+    let sql = `UPDATE nsh_face set likes = likes +
+     1 where id= ${mes.query.id};`
+    let result = await db.query(sql, []);
+    let code = ''
+    if (result.fieldCount == 0) {
+      code = 200
+    }
+    resp.json({
+      code
+    })
+  },
+  // ------------------获取捏脸详情------------------
+  get_nshFace_detail: async (mes, resp, next) => {
+    let params = [mes.query.id]
+    let sql = `select f.*,f_t.* from nsh_face f
+    left join nsh_face_type f_t on f.type_id = f_t.type_id 
+    having id=? ;`;
+    let result = await db.query(sql, params);
+    let obj = ''
+    if (result.length > 0) {
+      obj = result[0]
+    }
+    resp.json({
+      data: obj,
       code: 200
     })
   },
