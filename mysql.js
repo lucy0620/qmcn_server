@@ -15,7 +15,7 @@ const pool = mysql.createPool({
   port: 3306,
   user: 'root',
   password: 'qqq123',
-  database: 'qmcn_home',//qmcn_local只是本地工作台的项目命名，数据库名为进入项目后左侧列表显示库名qmcn_home
+  database: 'qmcn_local',//qmcn_local只是本地工作台的项目命名，数据库名为进入项目后左侧列表显示库名qmcn_local
   dateStrings: true
 })
 
@@ -27,7 +27,7 @@ pool.on('enqueue', (connection) => {
 })
 
 // 3.封装sql方法
-module.exports.query = (sql, params, callback) => {
+module.exports.query = (sql, params, cb) => {
   if (typeof cb == "function") {
     // 获取连接
     pool.getConnection((err, conn) => {
@@ -39,7 +39,7 @@ module.exports.query = (sql, params, callback) => {
         conn.query(sql, params, (error, rows) => {
           conn.release();
           console.log('执行sql语句失败')
-          callback(error, rows)
+          cb(error, rows)
         });
       }
     });
