@@ -1,16 +1,21 @@
 // -------------------------------数据库 begin -------------------------------
 // 1.引入数据库模块
-const { connections } = require('mongoose')
+// const { connections } = require('mongoose')
 const mysql = require('mysql')
 // 2.创建连接池
 // 这个用户可以自己去工作台创建新的哈，我用的是安装的时候就创建的root
 // 端口号用的是安装的时候默认的3306
 const pool = mysql.createPool({
-  host: '120.79.39.145',
+  // host: '120.79.39.145',
+  // port: 3306,
+  // user: 'lucy',
+  // password: 'qqq123',
+  // database: 'qmcn',
+  host: '127.0.0.1',
   port: 3306,
-  user: 'lucy',
+  user: 'root',
   password: 'qqq123',
-  database: 'qmcn',
+  database: 'qmcn_home',//qmcn_local只是本地工作台的项目命名，数据库名为进入项目后左侧列表显示库名qmcn_home
   dateStrings: true
 })
 
