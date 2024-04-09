@@ -315,10 +315,10 @@ let Book = {
       select b.*, 
       group_concat(distinct b_l.label_name) as label_names, 
       b_t.type_name 
-      from qmcn_local.book b 
-      left join qmcn_local.book_type b_t on b.type_id = b_t.type_id 
-      left join qmcn_local.book_website b_w on b.website_id = b_w.website_id 
-      left join qmcn_local.book_label b_l on find_in_set(b_l.label_id, b.label_ids) group by b.id 
+      from book b 
+      left join book_type b_t on b.type_id = b_t.type_id 
+      left join book_website b_w on b.website_id = b_w.website_id 
+      left join book_label b_l on find_in_set(b_l.label_id, b.label_ids) group by b.id 
       having id > 0 `;
     if (type_id) {
       sql += ` and type_id = '${type_id}'`;
@@ -366,11 +366,11 @@ let Book = {
     (select b.*, 
     group_concat(distinct b_l.label_name) as label_names, 
     group_concat(distinct b_d.derive_name) as derive_names, 
-    b_t.type_name,b_w.website_name from qmcn_local.book b 
-    left join qmcn_local.book_type b_t on b.type_id = b_t.type_id 
-    left join qmcn_local.book_website b_w on b.website_id = b_w.website_id 
-    left join qmcn_local.book_label b_l on find_in_set(b_l.label_id, b.label_ids) 
-    left join qmcn_local.book_derive b_d on find_in_set(b_d.derive_id, b.derive_ids) group by b.id ) 
+    b_t.type_name,b_w.website_name from book b 
+    left join book_type b_t on b.type_id = b_t.type_id 
+    left join book_website b_w on b.website_id = b_w.website_id 
+    left join book_label b_l on find_in_set(b_l.label_id, b.label_ids) 
+    left join book_derive b_d on find_in_set(b_d.derive_id, b.derive_ids) group by b.id ) 
     as new_b 
     where new_b.id=? ;`;
     let result = await db.query(sql, params);
@@ -1011,8 +1011,8 @@ let nshFace = {
     let sql = `
       select f.*, 
       f_t.type_name 
-      from qmcn_local.nsh_face f
-      left join qmcn_local.nsh_face_type f_t on f.type_id = f_t.type_id 
+      from nsh_face f
+      left join nsh_face_type f_t on f.type_id = f_t.type_id 
       having id > 0 `;
     if (type_id) {
       sql += ` and type_id = '${type_id}'`;
