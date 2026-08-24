@@ -17,7 +17,8 @@ const { rejects } = require('assert');
 const { resolveSoa } = require('dns');
 app.use(cors());
 app.all('*', function (mes, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', host.hostHeader)
+    //res.setHeader('Access-Control-Allow-Origin', host.hostHeader); //此跨域处理方式无法适配手机连接本地服务器
+    res.setHeader('Access-Control-Allow-Origin', "*");
   next();
 })
 app.use(express.static('./'));
